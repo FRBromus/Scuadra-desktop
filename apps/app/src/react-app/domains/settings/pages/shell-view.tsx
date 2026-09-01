@@ -270,7 +270,7 @@ export function ShellCustomizationView() {
                   id="shell-app-name"
                   className="h-8 text-xs"
                   value={brandAppName}
-                  placeholder="OpenWork"
+                  placeholder="Scuadra"
                   disabled
                   onChange={(event) => update({ appName: event.currentTarget.value || DEFAULT_SHELL_CONFIG.appName })}
                 />
@@ -280,7 +280,7 @@ export function ShellCustomizationView() {
           <Alert>
             <Info />
             <AlertDescription>
-              {brandAppName === "OpenWork" ? "Your organization has not set a custom application name." : "This application name is managed by your organization."}
+              {brandAppName === "Scuadra" ? "Your organization has not set a custom application name." : "This application name is managed by your organization."}
             </AlertDescription>
           </Alert>
         </LayoutSectionItem>

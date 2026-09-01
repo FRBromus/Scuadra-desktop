@@ -296,7 +296,7 @@ export type SessionSurfaceProps = {
 };
 
 function messageToReadableText(message: UIMessage) {
-  const header = message.role === "user" ? "You" : message.role === "assistant" ? "OpenWork" : message.role;
+  const header = message.role === "user" ? "You" : message.role === "assistant" ? "Scuadra" : message.role;
   const body = message.parts
     .flatMap((part) => {
       if (part.type === "text") return [part.text];
