@@ -30,6 +30,7 @@ import {
 import { createUiControlServer } from "./ui-control-server.mjs";
 import { createApplicationMenu } from "./app-menu.mjs";
 import { applyBrandAppName } from "./brand-app-name.mjs";
+import { registerScuadraIpc } from "./scuadra-bridge.mjs";
 import { createBrowserPanel } from "./browser-panel.mjs";
 import { createWorkspaceStore } from "./workspace-store.mjs";
 import {
@@ -85,6 +86,10 @@ const TAURI_APP_IDENTIFIER = "com.differentai.openwork";
 const DEV_APP_IDENTIFIER = "com.differentai.openwork.dev";
 const DESKTOP_PROTOCOL_SCHEME = "openwork";
 const isDevMode = process.env.OPENWORK_DEV_MODE === "1";
+// Scuadra mode: the window wraps Scuadra web (SCUADRA_MODE=1). The OpenWork
+// runtime (workspaces, OpenCode sidecar, cloud MCP sync) stays off and the
+// window gets the Scuadra folder-access bridge instead of the OpenWork preload.
+const isScuadraMode = process.env.SCUADRA_MODE === "1";
 const APP_NAME =
   process.env.OPENWORK_ELECTRON_APP_NAME?.trim() ||
   (isDevMode ? "Scuadra - Dev" : "Scuadra");
@@ -2173,7 +2178,7 @@ async function handleDesktopInvoke(event, command, ...args) {
 async function createMainWindow() {
   if (mainWindow) return mainWindow;
 
-  const preloadPath = path.join(__dirname, "preload.mjs");
+  const preloadPath = path.join(__dirname, isScuadraMode ? "scuadra-preload.mjs" : "preload.mjs");
   const windowAppearanceOptions = {};
   if (process.platform === "darwin") {
     Object.assign(windowAppearanceOptions, {
@@ -2380,6 +2385,7 @@ ipcMain.handle("openwork:terminal:kill", (event, terminalId) => {
 });
 
 browserPanel.registerIpc(ipcMain);
+registerScuadraIpc({ ipcMain, dialog, getMainWindow: () => mainWindow });
 
 registerMigrationIpc({ app, ipcMain });
 const { ensureAutoUpdater } = registerUpdaterIpc({ app, ipcMain, getMainWindow: () => mainWindow });
@@ -2438,19 +2444,23 @@ if (!app.requestSingleInstanceLock()) {
       await applyDesktopBootstrapBrandIcon(bootstrapConfig, applyBrandIconUrl);
     }
     applicationMenu.install();
-    await runtimeManager.prepareFreshRuntime().catch(() => undefined);
+    if (isScuadraMode) {
+      runtimeBootstrapPromise = Promise.resolve({ ok: false, error: "scuadra-mode" });
+    } else {
+      await runtimeManager.prepareFreshRuntime().catch(() => undefined);
 
-    // Use Tauri's existing workspace state file as canonical so rollback and
-    // Electron see the same workspace list. Import the short-lived
-    // Electron-only filename only when the shared file is missing.
-    await workspaceStore.migrateLegacyElectronWorkspaceStateIfNeeded();
-    await uiControlServer.start().catch((error) => {
-      console.warn("[ui-control] failed to start", error);
-    });
-    runtimeBootstrapPromise = bootRuntimeForSelectedWorkspace().catch((error) => ({
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    }));
+      // Use Tauri's existing workspace state file as canonical so rollback and
+      // Electron see the same workspace list. Import the short-lived
+      // Electron-only filename only when the shared file is missing.
+      await workspaceStore.migrateLegacyElectronWorkspaceStateIfNeeded();
+      await uiControlServer.start().catch((error) => {
+        console.warn("[ui-control] failed to start", error);
+      });
+      runtimeBootstrapPromise = bootRuntimeForSelectedWorkspace().catch((error) => ({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
 
     queueDeepLinks(forwardedDeepLinks(process.argv));
     const win = await createMainWindow();
@@ -2464,7 +2474,8 @@ if (!app.requestSingleInstanceLock()) {
     // Initialize the packaged updater after the window is up so the user sees
     // a working app first. Renderer-owned checks pass the selected release
     // channel explicitly, avoiding stale stable-feed results for alpha users.
-    void ensureAutoUpdater();
+    // Scuadra mode skips it: updates for the wrapper are managed manually.
+    if (!isScuadraMode) void ensureAutoUpdater();
   });
 
   app.on("activate", async () => {

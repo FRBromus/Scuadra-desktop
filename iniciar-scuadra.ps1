@@ -10,6 +10,7 @@ $bunDir = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Oven-sh.Bun_Microsoft.Win
 if (Test-Path $bunDir) { $env:Path = "$bunDir;$env:Path" }
 
 $env:OPENWORK_DEV_MODE = "1"
+$env:SCUADRA_MODE = "1"
 $env:OPENWORK_ELECTRON_START_URL = "http://localhost:4200"
 
 pnpm --filter "@openwork/desktop" dev
