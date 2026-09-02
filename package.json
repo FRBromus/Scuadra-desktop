@@ -13,7 +13,7 @@
     "demo:electron:reset": "node scripts/dev-two-electron-demo.mjs --reset-only",
     "demo:reset": "pnpm demo:den:reset && pnpm demo:electron:reset",
     "dev:sandbox": "bash .devcontainer/dev-sandbox.sh",
-    "dev:ui": "OPENWORK_DEV_MODE=1 pnpm --filter @openwork/app dev",
+    "dev:ui": "pnpm --filter @openwork/app exec vite",
     "dev:ui-demo": "pnpm --filter @openwork/ui-demo dev",
     "dev:web": "pnpm run dev:den:web",
     "dev:web-local": "pnpm run dev:den",
